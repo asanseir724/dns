@@ -160,90 +160,49 @@ install_tunnel_project() {
     log_message "Tunnel Project نصب شد"
 }
 
-# تابع نصب خودکار DNS
-auto_install_dns() {
-    info_message "نصب خودکار DNS Project..."
+# تابع تنظیم خودکار DNS
+setup_dns_automatically() {
+    info_message "تنظیم خودکار DNS Project..."
     
-    if [[ -f "$DNS_INSTALL_DIR/install_byosh.sh" ]]; then
-        cd "$DNS_INSTALL_DIR"
-        
-        # ایجاد پروفایل پیش‌فرض
-        cat > /tmp/dns_auto_config << 'EOF'
-#!/bin/bash
-# تنظیمات خودکار DNS
+    # ایجاد پوشه تنظیمات
+    mkdir -p ~/.byosh/profiles
+    
+    # ایجاد پروفایل پیش‌فرض
+    cat > ~/.byosh/profiles/default << 'EOF'
+# پروفایل ByoSH - default
+# ایجاد شده در: $(date)
 
-# اطلاعات پیش‌فرض
 PROFILE_NAME="default"
 DISPLAY_NAME="سرور پیش‌فرض"
 PUB_IP="127.0.0.1"
 DNS_PORT="53"
 CONTAINER_NAME="byosh-default"
 DESCRIPTION="سرور DNS پیش‌فرض"
-
-# اجرای نصب
-./install_byosh.sh << 'INSTALL_EOF'
-1
-default
-سرور پیش‌فرض
-127.0.0.1
-53
-سرور DNS پیش‌فرض
-y
-INSTALL_EOF
+CREATED_DATE="$(date)"
 EOF
-        
-        chmod +x /tmp/dns_auto_config
-        /tmp/dns_auto_config || {
-            warning_message "نصب خودکار DNS ناموفق"
-            return 1
-        }
-        
-        rm -f /tmp/dns_auto_config
-        log_message "DNS Project با موفقیت نصب شد"
-        return 0
-    else
-        warning_message "فایل install_byosh.sh یافت نشد"
-        return 1
-    fi
+
+    log_message "پروفایل پیش‌فرض DNS ایجاد شد"
 }
 
 # تابع تنظیم خودکار Tunnel
-auto_setup_tunnel() {
+setup_tunnel_automatically() {
     info_message "تنظیم خودکار Tunnel Project..."
     
-    if [[ -f "$TUNNEL_INSTALL_DIR/setup_tunnel.sh" ]]; then
-        cd "$TUNNEL_INSTALL_DIR"
-        
-        # ایجاد تنظیمات پیش‌فرض
-        cat > /tmp/tunnel_auto_config << 'EOF'
-#!/bin/bash
-# تنظیمات خودکار Tunnel
-
-# اجرای تنظیم
-./setup_tunnel.sh << 'SETUP_EOF'
-1
-127.0.0.1
-2222
-tunnel
-8080
-1080
-y
-SETUP_EOF
+    # ایجاد پوشه تنظیمات
+    $SUDO_CMD mkdir -p /etc/tunnel
+    
+    # ایجاد فایل کانفیگ پیش‌فرض
+    $SUDO_CMD tee /etc/tunnel/config.conf > /dev/null << 'EOF'
+# تنظیمات تانل پیش‌فرض
+SERVER_TYPE="iran"
+FOREIGN_IP="127.0.0.1"
+FOREIGN_PORT="2222"
+FOREIGN_USER="tunnel"
+LOCAL_PORT="8080"
+TUNNEL_PORT="1080"
 EOF
-        
-        chmod +x /tmp/tunnel_auto_config
-        /tmp/tunnel_auto_config || {
-            warning_message "تنظیم خودکار Tunnel ناموفق"
-            return 1
-        }
-        
-        rm -f /tmp/tunnel_auto_config
-        log_message "Tunnel Project با موفقیت تنظیم شد"
-        return 0
-    else
-        warning_message "فایل setup_tunnel.sh یافت نشد"
-        return 1
-    fi
+
+    log_message "تنظیمات پیش‌فرض Tunnel ایجاد شد"
 }
 
 # تابع ایجاد اسکریپت‌های مدیریت
@@ -257,22 +216,51 @@ create_management_scripts() {
 # اسکریپت مدیریت DNS ByoSH
 case "${1:-help}" in
     "list")
-        /opt/dns/manage_byosh.sh list
+        if [[ -d ~/.byosh/profiles ]]; then
+            echo "پروفایل‌های موجود:"
+            ls ~/.byosh/profiles/ 2>/dev/null || echo "هیچ پروفایلی یافت نشد"
+        else
+            echo "پوشه پروفایل‌ها یافت نشد"
+        fi
         ;;
     "start")
-        /opt/dns/manage_byosh.sh start "${2:-default}"
+        PROFILE="${2:-default}"
+        if [[ -f ~/.byosh/profiles/$PROFILE ]]; then
+            source ~/.byosh/profiles/$PROFILE
+            echo "شروع کانتینر $CONTAINER_NAME..."
+            docker run -d --name "$CONTAINER_NAME" -p "$DNS_PORT:53/udp" --restart unless-stopped byosh/byosh || {
+                echo "کانتینر در حال اجرا است یا خطا رخ داده"
+            }
+        else
+            echo "پروفایل $PROFILE یافت نشد"
+        fi
         ;;
     "stop")
-        /opt/dns/manage_byosh.sh stop "${2:-default}"
+        PROFILE="${2:-default}"
+        if [[ -f ~/.byosh/profiles/$PROFILE ]]; then
+            source ~/.byosh/profiles/$PROFILE
+            echo "متوقف کردن کانتینر $CONTAINER_NAME..."
+            docker stop "$CONTAINER_NAME" 2>/dev/null || echo "کانتینر متوقف است"
+        else
+            echo "پروفایل $PROFILE یافت نشد"
+        fi
         ;;
     "status")
-        /opt/dns/manage_byosh.sh status
+        echo "وضعیت کانتینرهای DNS:"
+        docker ps -a --filter "name=byosh-" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
         ;;
     "logs")
-        /opt/dns/manage_byosh.sh logs "${2:-default}"
+        PROFILE="${2:-default}"
+        if [[ -f ~/.byosh/profiles/$PROFILE ]]; then
+            source ~/.byosh/profiles/$PROFILE
+            docker logs "$CONTAINER_NAME" 2>/dev/null || echo "کانتینر یافت نشد"
+        else
+            echo "پروفایل $PROFILE یافت نشد"
+        fi
         ;;
     "clean")
-        /opt/dns/manage_byosh.sh clean
+        echo "پاکسازی کانتینرهای متوقف..."
+        docker container prune -f
         ;;
     "help"|*)
         echo "راهنمای استفاده از ByoSH:"
@@ -293,24 +281,53 @@ EOF
 # اسکریپت مدیریت تانل
 case "${1:-help}" in
     "start")
-        /opt/tunnel/tunnel_client.sh start
+        echo "شروع تانل..."
+        if [[ -f /etc/tunnel/config.conf ]]; then
+            source /etc/tunnel/config.conf
+            if [[ "$SERVER_TYPE" == "iran" ]]; then
+                /opt/tunnel/tunnel_client.sh start
+            else
+                /opt/tunnel/tunnel_server.sh start
+            fi
+        else
+            echo "فایل کانفیگ یافت نشد - ابتدا setup را اجرا کنید"
+        fi
         ;;
     "stop")
-        /opt/tunnel/tunnel_client.sh stop
+        echo "متوقف کردن تانل..."
+        if [[ -f /etc/tunnel/config.conf ]]; then
+            source /etc/tunnel/config.conf
+            if [[ "$SERVER_TYPE" == "iran" ]]; then
+                /opt/tunnel/tunnel_client.sh stop
+            else
+                /opt/tunnel/tunnel_server.sh stop
+            fi
+        fi
         ;;
     "status")
-        /opt/tunnel/tunnel_manager.sh status
+        echo "وضعیت تانل..."
+        if [[ -f /etc/tunnel/config.conf ]]; then
+            source /etc/tunnel/config.conf
+            echo "نوع سرور: $SERVER_TYPE"
+            echo "IP خارجی: $FOREIGN_IP"
+            echo "پورت خارجی: $FOREIGN_PORT"
+            echo "پورت محلی: $LOCAL_PORT"
+        else
+            echo "فایل کانفیگ یافت نشد"
+        fi
         ;;
     "monitor")
+        echo "مانیتورینگ زنده..."
         /opt/tunnel/tunnel_manager.sh monitor
         ;;
     "optimize")
+        echo "بهینه‌سازی تانل..."
         /opt/tunnel/optimize_tunnel.sh all
         ;;
     "restart")
-        /opt/tunnel/tunnel_client.sh stop
+        tunnel stop
         sleep 2
-        /opt/tunnel/tunnel_client.sh start
+        tunnel start
         ;;
     "help"|*)
         echo "راهنمای استفاده از تانل:"
@@ -364,6 +381,10 @@ show_install_summary() {
     echo ""
     echo -e "${GREEN}🎉 همه چیز آماده است!${NC}"
     echo -e "${BLUE}💡 می‌توانید فوراً از دستورات بالا استفاده کنید${NC}"
+    echo ""
+    echo -e "${YELLOW}📝 نکته: برای تنظیمات پیشرفته، فایل‌های کانفیگ را ویرایش کنید${NC}"
+    echo "  - DNS: ~/.byosh/profiles/"
+    echo "  - Tunnel: /etc/tunnel/config.conf"
 }
 
 # تابع اصلی
@@ -388,22 +409,16 @@ main() {
     install_tunnel_project
     create_management_scripts
     
-    # نصب خودکار پروژه‌ها
-    info_message "شروع نصب خودکار پروژه‌ها..."
+    # تنظیم خودکار پروژه‌ها
+    info_message "شروع تنظیم خودکار پروژه‌ها..."
     
-    # نصب خودکار DNS
-    if auto_install_dns; then
-        log_message "✅ DNS Project آماده و در حال اجرا"
-    else
-        warning_message "⚠️ DNS Project نیاز به تنظیم دستی دارد"
-    fi
+    # تنظیم خودکار DNS
+    setup_dns_automatically
+    log_message "✅ DNS Project آماده است"
     
     # تنظیم خودکار Tunnel
-    if auto_setup_tunnel; then
-        log_message "✅ Tunnel Project آماده و در حال اجرا"
-    else
-        warning_message "⚠️ Tunnel Project نیاز به تنظیم دستی دارد"
-    fi
+    setup_tunnel_automatically
+    log_message "✅ Tunnel Project آماده است"
     
     cleanup
     
