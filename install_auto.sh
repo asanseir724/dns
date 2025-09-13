@@ -191,6 +191,8 @@ detect_server_type() {
     echo "1) Iran Server (Client) - Connect to foreign server"
     echo "2) Foreign Server (Server) - Receive connection from Iran server"
     echo ""
+    echo -e "${YELLOW}⚠️  IMPORTANT: Please type your answer in the terminal where this script is running!${NC}"
+    echo ""
     
     while true; do
         read -p "Your server type (1 or 2): " choice
@@ -207,6 +209,7 @@ detect_server_type() {
                 ;;
             *)
                 echo -e "${RED}❌ Please enter 1 or 2${NC}"
+                echo -e "${YELLOW}💡 Make sure you're typing in the correct terminal window!${NC}"
                 ;;
         esac
     done
@@ -217,6 +220,8 @@ get_server_info() {
     if [[ "$SERVER_TYPE" == "iran" ]]; then
         echo -e "${BLUE}=== Foreign Server Information ===${NC}"
         echo "Please enter foreign server details:"
+        echo -e "${YELLOW}💡 Example: IP = 1.2.3.4, Port = 2222, Username = tunnel${NC}"
+        echo ""
         
         read -p "Foreign server IP address: " FOREIGN_IP
         read -p "Foreign server SSH port [2222]: " FOREIGN_PORT
