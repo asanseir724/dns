@@ -186,27 +186,27 @@ EOF
 
 # تابع تشخیص نوع سرور
 detect_server_type() {
-    echo -e "${BLUE}=== تشخیص نوع سرور ===${NC}"
-    echo "لطفاً نوع سرور خود را انتخاب کنید:"
-    echo "1) سرور ایران (کلاینت) - برای اتصال به سرور خارج"
-    echo "2) سرور خارج (سرور) - برای دریافت اتصال از سرور ایران"
+    echo -e "${BLUE}=== Server Type Detection ===${NC}"
+    echo "Please select your server type:"
+    echo "1) Iran Server (Client) - Connect to foreign server"
+    echo "2) Foreign Server (Server) - Receive connection from Iran server"
     echo ""
     
     while true; do
-        read -p "نوع سرور شما (1 یا 2): " choice
+        read -p "Your server type (1 or 2): " choice
         case $choice in
             1)
                 SERVER_TYPE="iran"
-                echo -e "${GREEN}✅ سرور ایران (کلاینت) انتخاب شد${NC}"
+                echo -e "${GREEN}✅ Iran Server (Client) selected${NC}"
                 break
                 ;;
             2)
                 SERVER_TYPE="foreign"
-                echo -e "${GREEN}✅ سرور خارج (سرور) انتخاب شد${NC}"
+                echo -e "${GREEN}✅ Foreign Server (Server) selected${NC}"
                 break
                 ;;
             *)
-                echo -e "${RED}❌ لطفاً 1 یا 2 را وارد کنید${NC}"
+                echo -e "${RED}❌ Please enter 1 or 2${NC}"
                 ;;
         esac
     done
@@ -215,26 +215,26 @@ detect_server_type() {
 # تابع دریافت اطلاعات سرور
 get_server_info() {
     if [[ "$SERVER_TYPE" == "iran" ]]; then
-        echo -e "${BLUE}=== اطلاعات سرور خارج ===${NC}"
-        echo "لطفاً اطلاعات سرور خارج را وارد کنید:"
+        echo -e "${BLUE}=== Foreign Server Information ===${NC}"
+        echo "Please enter foreign server details:"
         
-        read -p "آدرس IP سرور خارج: " FOREIGN_IP
-        read -p "پورت SSH سرور خارج [2222]: " FOREIGN_PORT
+        read -p "Foreign server IP address: " FOREIGN_IP
+        read -p "Foreign server SSH port [2222]: " FOREIGN_PORT
         FOREIGN_PORT=${FOREIGN_PORT:-2222}
         
-        read -p "نام کاربری سرور خارج [tunnel]: " FOREIGN_USER
+        read -p "Foreign server username [tunnel]: " FOREIGN_USER
         FOREIGN_USER=${FOREIGN_USER:-tunnel}
         
-        read -p "پورت محلی برای تانل [8080]: " LOCAL_PORT
+        read -p "Local tunnel port [8080]: " LOCAL_PORT
         LOCAL_PORT=${LOCAL_PORT:-8080}
         
-        read -p "پورت تانل روی سرور خارج [1080]: " TUNNEL_PORT
+        read -p "Tunnel port on foreign server [1080]: " TUNNEL_PORT
         TUNNEL_PORT=${TUNNEL_PORT:-1080}
         
-        echo -e "${GREEN}✅ اطلاعات سرور خارج ثبت شد${NC}"
+        echo -e "${GREEN}✅ Foreign server information saved${NC}"
     else
-        echo -e "${BLUE}=== تنظیمات سرور خارج ===${NC}"
-        echo "تنظیمات پیش‌فرض برای سرور خارج:"
+        echo -e "${BLUE}=== Foreign Server Configuration ===${NC}"
+        echo "Default settings for foreign server:"
         
         FOREIGN_IP="0.0.0.0"
         FOREIGN_PORT="2222"
@@ -242,7 +242,7 @@ get_server_info() {
         LOCAL_PORT="8080"
         TUNNEL_PORT="1080"
         
-        echo -e "${GREEN}✅ تنظیمات پیش‌فرض سرور خارج اعمال شد${NC}"
+        echo -e "${GREEN}✅ Default foreign server settings applied${NC}"
     fi
 }
 
@@ -432,16 +432,16 @@ show_install_summary() {
     echo "  - اسکریپت مدیریت DNS: /usr/local/bin/byosh"
     echo "  - اسکریپت مدیریت Tunnel: /usr/local/bin/tunnel"
     echo ""
-    echo -e "${BLUE}🌐 نوع سرور:${NC}"
+    echo -e "${BLUE}🌐 Server Type:${NC}"
     if [[ "$SERVER_TYPE" == "iran" ]]; then
-        echo "  - سرور ایران (کلاینت) - اتصال به سرور خارج"
-        echo "  - IP سرور خارج: $FOREIGN_IP"
-        echo "  - پورت SSH: $FOREIGN_PORT"
-        echo "  - نام کاربری: $FOREIGN_USER"
+        echo "  - Iran Server (Client) - Connect to foreign server"
+        echo "  - Foreign server IP: $FOREIGN_IP"
+        echo "  - SSH port: $FOREIGN_PORT"
+        echo "  - Username: $FOREIGN_USER"
     else
-        echo "  - سرور خارج (سرور) - دریافت اتصال از سرور ایران"
-        echo "  - پورت SSH: $FOREIGN_PORT"
-        echo "  - پورت تانل: $TUNNEL_PORT"
+        echo "  - Foreign Server (Server) - Receive connection from Iran server"
+        echo "  - SSH port: $FOREIGN_PORT"
+        echo "  - Tunnel port: $TUNNEL_PORT"
     fi
     echo ""
     echo -e "${BLUE}🚀 دستورات آماده برای استفاده:${NC}"
