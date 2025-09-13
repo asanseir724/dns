@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# اسکریپت نصب کاملاً خودکار
-# این اسکریپت همه چیز را با یک دستور نصب می‌کند
+# اسکریپت نصب کاملاً خودکار - نسخه غیرتعاملی
+# این اسکریپت از متغیرهای محیطی استفاده می‌کند
 
 set -e
 
@@ -42,18 +42,40 @@ show_banner() {
     echo -e "${PURPLE}"
     echo "╔══════════════════════════════════════════════════════════════╗"
     echo "║              سیستم مدیریت DNS و تانل خودکار                ║"
-    echo "║                    نصب کاملاً خودکار                       ║"
+    echo "║                    نصب کاملاً خودکار v3.0                 ║"
     echo "╚══════════════════════════════════════════════════════════════╝"
     echo -e "${NC}"
 }
 
+# تابع نمایش راهنما
+show_help() {
+    echo -e "${BLUE}=== Usage Examples ===${NC}"
+    echo ""
+    echo -e "${YELLOW}For Iran Server (Client):${NC}"
+    echo "SERVER_TYPE=iran FOREIGN_IP=1.2.3.4 FOREIGN_PORT=2222 FOREIGN_USER=tunnel LOCAL_PORT=8080 TUNNEL_PORT=1080 curl -sSL https://raw.githubusercontent.com/asanseir724/dns/main/install_auto.sh | bash"
+    echo ""
+    echo -e "${YELLOW}For Foreign Server (Server):${NC}"
+    echo "SERVER_TYPE=foreign curl -sSL https://raw.githubusercontent.com/asanseir724/dns/main/install_auto.sh | bash"
+    echo ""
+    echo -e "${YELLOW}Default (Foreign Server):${NC}"
+    echo "curl -sSL https://raw.githubusercontent.com/asanseir724/dns/main/install_auto.sh | bash"
+    echo ""
+    echo -e "${BLUE}=== Environment Variables ===${NC}"
+    echo "SERVER_TYPE     - Server type: 'iran' or 'foreign' (default: foreign)"
+    echo "FOREIGN_IP      - Foreign server IP (required for iran server)"
+    echo "FOREIGN_PORT    - SSH port (default: 2222)"
+    echo "FOREIGN_USER    - SSH username (default: tunnel)"
+    echo "LOCAL_PORT      - Local tunnel port (default: 8080)"
+    echo "TUNNEL_PORT     - Tunnel port on foreign server (default: 1080)"
+}
+
 # تابع بررسی وابستگی‌ها
 check_dependencies() {
-    info_message "بررسی وابستگی‌های مورد نیاز..."
+    info_message "Checking dependencies..."
     
     # بررسی git
     if ! command -v git &> /dev/null; then
-        warning_message "git نصب نیست - در حال نصب..."
+        warning_message "git not installed - installing..."
         if command -v apt-get &> /dev/null; then
             $SUDO_CMD apt-get update && $SUDO_CMD apt-get install -y git
         elif command -v yum &> /dev/null; then
@@ -61,13 +83,13 @@ check_dependencies() {
         elif command -v dnf &> /dev/null; then
             $SUDO_CMD dnf update -y && $SUDO_CMD dnf install -y git
         else
-            error_message "نمی‌توان git را نصب کرد"
+            error_message "Cannot install git"
         fi
     fi
     
     # بررسی curl
     if ! command -v curl &> /dev/null; then
-        warning_message "curl نصب نیست - در حال نصب..."
+        warning_message "curl not installed - installing..."
         if command -v apt-get &> /dev/null; then
             $SUDO_CMD apt-get install -y curl
         elif command -v yum &> /dev/null; then
@@ -77,12 +99,12 @@ check_dependencies() {
         fi
     fi
     
-    log_message "وابستگی‌ها بررسی شدند"
+    log_message "Dependencies checked"
 }
 
 # تابع دانلود پروژه
 download_project() {
-    info_message "دانلود پروژه از گیت‌هاب..."
+    info_message "Downloading project from GitHub..."
     
     # پاکسازی دایرکتوری موقت
     rm -rf "$TEMP_DIR"
@@ -90,15 +112,15 @@ download_project() {
     
     # کلون کردن پروژه
     if git clone "$REPO_URL" "$TEMP_DIR"; then
-        log_message "پروژه با موفقیت دانلود شد"
+        log_message "Project downloaded successfully"
     else
-        error_message "خطا در دانلود پروژه از گیت‌هاب"
+        error_message "Error downloading project from GitHub"
     fi
 }
 
 # تابع نصب وابستگی‌های سیستم
 install_system_dependencies() {
-    info_message "نصب وابستگی‌های سیستم..."
+    info_message "Installing system dependencies..."
     
     if command -v apt-get &> /dev/null; then
         $SUDO_CMD apt-get update
@@ -111,12 +133,12 @@ install_system_dependencies() {
         $SUDO_CMD dnf install -y openssh-clients openssh-server autossh firewalld nc bc docker
     fi
     
-    log_message "وابستگی‌های سیستم نصب شدند"
+    log_message "System dependencies installed"
 }
 
 # تابع نصب DNS Project
 install_dns_project() {
-    info_message "نصب DNS Project..."
+    info_message "Installing DNS Project..."
     
     # ایجاد دایرکتوری نصب
     $SUDO_CMD mkdir -p "$DNS_INSTALL_DIR"
@@ -124,9 +146,9 @@ install_dns_project() {
     # کپی فایل‌های dns-project
     if [[ -d "$TEMP_DIR/dns-project" ]]; then
         $SUDO_CMD cp -r "$TEMP_DIR/dns-project"/* "$DNS_INSTALL_DIR/"
-        log_message "فایل‌های dns-project کپی شدند"
+        log_message "dns-project files copied"
     else
-        warning_message "پوشه dns-project یافت نشد - رد شدن..."
+        warning_message "dns-project folder not found - skipping..."
         return
     fi
     
@@ -134,12 +156,12 @@ install_dns_project() {
     $SUDO_CMD chown -R "$USER:$USER" "$DNS_INSTALL_DIR"
     $SUDO_CMD chmod +x "$DNS_INSTALL_DIR"/*.sh
     
-    log_message "DNS Project نصب شد"
+    log_message "DNS Project installed"
 }
 
 # تابع نصب Tunnel Project
 install_tunnel_project() {
-    info_message "نصب Tunnel Project..."
+    info_message "Installing Tunnel Project..."
     
     # ایجاد دایرکتوری نصب
     $SUDO_CMD mkdir -p "$TUNNEL_INSTALL_DIR"
@@ -147,9 +169,9 @@ install_tunnel_project() {
     # کپی فایل‌های tunnel-project
     if [[ -d "$TEMP_DIR/tunnel-project" ]]; then
         $SUDO_CMD cp -r "$TEMP_DIR/tunnel-project"/* "$TUNNEL_INSTALL_DIR/"
-        log_message "فایل‌های tunnel-project کپی شدند"
+        log_message "tunnel-project files copied"
     else
-        warning_message "پوشه tunnel-project یافت نشد - رد شدن..."
+        warning_message "tunnel-project folder not found - skipping..."
         return
     fi
     
@@ -157,116 +179,65 @@ install_tunnel_project() {
     $SUDO_CMD chown -R "$USER:$USER" "$TUNNEL_INSTALL_DIR"
     $SUDO_CMD chmod +x "$TUNNEL_INSTALL_DIR"/*.sh
     
-    log_message "Tunnel Project نصب شد"
+    log_message "Tunnel Project installed"
 }
 
 # تابع تنظیم خودکار DNS
 setup_dns_automatically() {
-    info_message "تنظیم خودکار DNS Project..."
+    info_message "Setting up DNS Project automatically..."
     
     # ایجاد پوشه تنظیمات
     mkdir -p ~/.byosh/profiles
     
     # ایجاد پروفایل پیش‌فرض
     cat > ~/.byosh/profiles/default << 'EOF'
-# پروفایل ByoSH - default
-# ایجاد شده در: $(date)
+# ByoSH Profile - default
+# Created: $(date)
 
 PROFILE_NAME="default"
-DISPLAY_NAME="سرور پیش‌فرض"
+DISPLAY_NAME="Default Server"
 PUB_IP="127.0.0.1"
 DNS_PORT="53"
 CONTAINER_NAME="byosh-default"
-DESCRIPTION="سرور DNS پیش‌فرض"
+DESCRIPTION="Default DNS server"
 CREATED_DATE="$(date)"
 EOF
 
-    log_message "پروفایل پیش‌فرض DNS ایجاد شد"
-}
-
-# تابع تشخیص نوع سرور
-detect_server_type() {
-    echo -e "${BLUE}=== Server Type Detection ===${NC}"
-    echo "Please select your server type:"
-    echo "1) Iran Server (Client) - Connect to foreign server"
-    echo "2) Foreign Server (Server) - Receive connection from Iran server"
-    echo ""
-    echo -e "${YELLOW}⚠️  IMPORTANT: Please type your answer in the terminal where this script is running!${NC}"
-    echo ""
-    
-    while true; do
-        read -p "Your server type (1 or 2): " choice
-        case $choice in
-            1)
-                SERVER_TYPE="iran"
-                echo -e "${GREEN}✅ Iran Server (Client) selected${NC}"
-                break
-                ;;
-            2)
-                SERVER_TYPE="foreign"
-                echo -e "${GREEN}✅ Foreign Server (Server) selected${NC}"
-                break
-                ;;
-            *)
-                echo -e "${RED}❌ Please enter 1 or 2${NC}"
-                echo -e "${YELLOW}💡 Make sure you're typing in the correct terminal window!${NC}"
-                ;;
-        esac
-    done
-}
-
-# تابع دریافت اطلاعات سرور
-get_server_info() {
-    if [[ "$SERVER_TYPE" == "iran" ]]; then
-        echo -e "${BLUE}=== Foreign Server Information ===${NC}"
-        echo "Please enter foreign server details:"
-        echo -e "${YELLOW}💡 Example: IP = 1.2.3.4, Port = 2222, Username = tunnel${NC}"
-        echo ""
-        
-        read -p "Foreign server IP address: " FOREIGN_IP
-        read -p "Foreign server SSH port [2222]: " FOREIGN_PORT
-        FOREIGN_PORT=${FOREIGN_PORT:-2222}
-        
-        read -p "Foreign server username [tunnel]: " FOREIGN_USER
-        FOREIGN_USER=${FOREIGN_USER:-tunnel}
-        
-        read -p "Local tunnel port [8080]: " LOCAL_PORT
-        LOCAL_PORT=${LOCAL_PORT:-8080}
-        
-        read -p "Tunnel port on foreign server [1080]: " TUNNEL_PORT
-        TUNNEL_PORT=${TUNNEL_PORT:-1080}
-        
-        echo -e "${GREEN}✅ Foreign server information saved${NC}"
-    else
-        echo -e "${BLUE}=== Foreign Server Configuration ===${NC}"
-        echo "Default settings for foreign server:"
-        
-        FOREIGN_IP="0.0.0.0"
-        FOREIGN_PORT="2222"
-        FOREIGN_USER="tunnel"
-        LOCAL_PORT="8080"
-        TUNNEL_PORT="1080"
-        
-        echo -e "${GREEN}✅ Default foreign server settings applied${NC}"
-    fi
+    log_message "Default DNS profile created"
 }
 
 # تابع تنظیم خودکار Tunnel
 setup_tunnel_automatically() {
-    info_message "تنظیم خودکار Tunnel Project..."
+    info_message "Setting up Tunnel Project automatically..."
     
-    # تشخیص نوع سرور
-    detect_server_type
+    # تنظیم متغیرهای پیش‌فرض
+    SERVER_TYPE=${SERVER_TYPE:-"foreign"}
+    FOREIGN_IP=${FOREIGN_IP:-"0.0.0.0"}
+    FOREIGN_PORT=${FOREIGN_PORT:-"2222"}
+    FOREIGN_USER=${FOREIGN_USER:-"tunnel"}
+    LOCAL_PORT=${LOCAL_PORT:-"8080"}
+    TUNNEL_PORT=${TUNNEL_PORT:-"1080"}
     
-    # دریافت اطلاعات سرور
-    get_server_info
+    # نمایش تنظیمات
+    echo -e "${BLUE}=== Tunnel Configuration ===${NC}"
+    echo "Server Type: $SERVER_TYPE"
+    if [[ "$SERVER_TYPE" == "iran" ]]; then
+        echo "Foreign IP: $FOREIGN_IP"
+        echo "Foreign Port: $FOREIGN_PORT"
+        echo "Foreign User: $FOREIGN_USER"
+        echo "Local Port: $LOCAL_PORT"
+        echo "Tunnel Port: $TUNNEL_PORT"
+    else
+        echo "SSH Port: $FOREIGN_PORT"
+        echo "Tunnel Port: $TUNNEL_PORT"
+    fi
     
     # ایجاد پوشه تنظیمات
     $SUDO_CMD mkdir -p /etc/tunnel
     
     # ایجاد فایل کانفیگ
     $SUDO_CMD tee /etc/tunnel/config.conf > /dev/null << EOF
-# تنظیمات تانل - $(date)
+# Tunnel Configuration - $(date)
 SERVER_TYPE="$SERVER_TYPE"
 FOREIGN_IP="$FOREIGN_IP"
 FOREIGN_PORT="$FOREIGN_PORT"
@@ -275,74 +246,74 @@ LOCAL_PORT="$LOCAL_PORT"
 TUNNEL_PORT="$TUNNEL_PORT"
 EOF
 
-    log_message "تنظیمات Tunnel برای سرور $SERVER_TYPE ایجاد شد"
+    log_message "Tunnel configuration created for $SERVER_TYPE server"
 }
 
 # تابع ایجاد اسکریپت‌های مدیریت
 create_management_scripts() {
-    info_message "ایجاد اسکریپت‌های مدیریت..."
+    info_message "Creating management scripts..."
     
     # اسکریپت مدیریت DNS
     $SUDO_CMD tee /usr/local/bin/byosh > /dev/null << 'EOF'
 #!/bin/bash
 
-# اسکریپت مدیریت DNS ByoSH
+# DNS ByoSH Management Script
 case "${1:-help}" in
     "list")
         if [[ -d ~/.byosh/profiles ]]; then
-            echo "پروفایل‌های موجود:"
-            ls ~/.byosh/profiles/ 2>/dev/null || echo "هیچ پروفایلی یافت نشد"
+            echo "Available profiles:"
+            ls ~/.byosh/profiles/ 2>/dev/null || echo "No profiles found"
         else
-            echo "پوشه پروفایل‌ها یافت نشد"
+            echo "Profiles folder not found"
         fi
         ;;
     "start")
         PROFILE="${2:-default}"
         if [[ -f ~/.byosh/profiles/$PROFILE ]]; then
             source ~/.byosh/profiles/$PROFILE
-            echo "شروع کانتینر $CONTAINER_NAME..."
+            echo "Starting container $CONTAINER_NAME..."
             docker run -d --name "$CONTAINER_NAME" -p "$DNS_PORT:53/udp" --restart unless-stopped byosh/byosh || {
-                echo "کانتینر در حال اجرا است یا خطا رخ داده"
+                echo "Container already running or error occurred"
             }
         else
-            echo "پروفایل $PROFILE یافت نشد"
+            echo "Profile $PROFILE not found"
         fi
         ;;
     "stop")
         PROFILE="${2:-default}"
         if [[ -f ~/.byosh/profiles/$PROFILE ]]; then
             source ~/.byosh/profiles/$PROFILE
-            echo "متوقف کردن کانتینر $CONTAINER_NAME..."
-            docker stop "$CONTAINER_NAME" 2>/dev/null || echo "کانتینر متوقف است"
+            echo "Stopping container $CONTAINER_NAME..."
+            docker stop "$CONTAINER_NAME" 2>/dev/null || echo "Container already stopped"
         else
-            echo "پروفایل $PROFILE یافت نشد"
+            echo "Profile $PROFILE not found"
         fi
         ;;
     "status")
-        echo "وضعیت کانتینرهای DNS:"
+        echo "DNS Container Status:"
         docker ps -a --filter "name=byosh-" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
         ;;
     "logs")
         PROFILE="${2:-default}"
         if [[ -f ~/.byosh/profiles/$PROFILE ]]; then
             source ~/.byosh/profiles/$PROFILE
-            docker logs "$CONTAINER_NAME" 2>/dev/null || echo "کانتینر یافت نشد"
+            docker logs "$CONTAINER_NAME" 2>/dev/null || echo "Container not found"
         else
-            echo "پروفایل $PROFILE یافت نشد"
+            echo "Profile $PROFILE not found"
         fi
         ;;
     "clean")
-        echo "پاکسازی کانتینرهای متوقف..."
+        echo "Cleaning stopped containers..."
         docker container prune -f
         ;;
     "help"|*)
-        echo "راهنمای استفاده از ByoSH:"
-        echo "  byosh list                # لیست پروفایل‌ها"
-        echo "  byosh start [profile]     # شروع پروفایل"
-        echo "  byosh stop [profile]     # متوقف کردن پروفایل"
-        echo "  byosh status             # وضعیت کانتینرها"
-        echo "  byosh logs [profile]     # نمایش لاگ‌ها"
-        echo "  byosh clean              # پاکسازی"
+        echo "ByoSH Usage:"
+        echo "  byosh list                # List profiles"
+        echo "  byosh start [profile]     # Start profile"
+        echo "  byosh stop [profile]     # Stop profile"
+        echo "  byosh status             # Container status"
+        echo "  byosh logs [profile]     # Show logs"
+        echo "  byosh clean              # Clean up"
         ;;
 esac
 EOF
@@ -351,10 +322,10 @@ EOF
     $SUDO_CMD tee /usr/local/bin/tunnel > /dev/null << 'EOF'
 #!/bin/bash
 
-# اسکریپت مدیریت تانل
+# Tunnel Management Script
 case "${1:-help}" in
     "start")
-        echo "شروع تانل..."
+        echo "Starting tunnel..."
         if [[ -f /etc/tunnel/config.conf ]]; then
             source /etc/tunnel/config.conf
             if [[ "$SERVER_TYPE" == "iran" ]]; then
@@ -363,11 +334,11 @@ case "${1:-help}" in
                 /opt/tunnel/tunnel_server.sh start
             fi
         else
-            echo "فایل کانفیگ یافت نشد - ابتدا setup را اجرا کنید"
+            echo "Config file not found - run setup first"
         fi
         ;;
     "stop")
-        echo "متوقف کردن تانل..."
+        echo "Stopping tunnel..."
         if [[ -f /etc/tunnel/config.conf ]]; then
             source /etc/tunnel/config.conf
             if [[ "$SERVER_TYPE" == "iran" ]]; then
@@ -378,23 +349,23 @@ case "${1:-help}" in
         fi
         ;;
     "status")
-        echo "وضعیت تانل..."
+        echo "Tunnel Status:"
         if [[ -f /etc/tunnel/config.conf ]]; then
             source /etc/tunnel/config.conf
-            echo "نوع سرور: $SERVER_TYPE"
-            echo "IP خارجی: $FOREIGN_IP"
-            echo "پورت خارجی: $FOREIGN_PORT"
-            echo "پورت محلی: $LOCAL_PORT"
+            echo "Server Type: $SERVER_TYPE"
+            echo "Foreign IP: $FOREIGN_IP"
+            echo "Foreign Port: $FOREIGN_PORT"
+            echo "Local Port: $LOCAL_PORT"
         else
-            echo "فایل کانفیگ یافت نشد"
+            echo "Config file not found"
         fi
         ;;
     "monitor")
-        echo "مانیتورینگ زنده..."
+        echo "Live monitoring..."
         /opt/tunnel/tunnel_manager.sh monitor
         ;;
     "optimize")
-        echo "بهینه‌سازی تانل..."
+        echo "Optimizing tunnel..."
         /opt/tunnel/optimize_tunnel.sh all
         ;;
     "restart")
@@ -403,13 +374,13 @@ case "${1:-help}" in
         tunnel start
         ;;
     "help"|*)
-        echo "راهنمای استفاده از تانل:"
-        echo "  tunnel start      # شروع تانل"
-        echo "  tunnel stop       # متوقف کردن تانل"
-        echo "  tunnel restart    # راه‌اندازی مجدد"
-        echo "  tunnel status     # وضعیت تانل"
-        echo "  tunnel monitor    # مانیتورینگ زنده"
-        echo "  tunnel optimize   # بهینه‌سازی"
+        echo "Tunnel Usage:"
+        echo "  tunnel start      # Start tunnel"
+        echo "  tunnel stop       # Stop tunnel"
+        echo "  tunnel restart    # Restart tunnel"
+        echo "  tunnel status     # Tunnel status"
+        echo "  tunnel monitor    # Live monitoring"
+        echo "  tunnel optimize   # Optimization"
         ;;
 esac
 EOF
@@ -417,57 +388,58 @@ EOF
     $SUDO_CMD chmod +x /usr/local/bin/byosh
     $SUDO_CMD chmod +x /usr/local/bin/tunnel
     
-    log_message "اسکریپت‌های مدیریت ایجاد شدند"
+    log_message "Management scripts created"
 }
 
 # تابع پاکسازی
 cleanup() {
-    info_message "پاکسازی فایل‌های موقت..."
+    info_message "Cleaning up temporary files..."
     rm -rf "$TEMP_DIR"
-    log_message "پاکسازی انجام شد"
+    log_message "Cleanup completed"
 }
 
 # تابع نمایش خلاصه نصب
 show_install_summary() {
-    echo -e "${GREEN}=== نصب کاملاً خودکار با موفقیت انجام شد ===${NC}"
+    echo -e "${GREEN}=== Installation Completed Successfully ===${NC}"
     echo ""
-    echo -e "${BLUE}✅ پروژه‌های نصب شده:${NC}"
+    echo -e "${BLUE}✅ Installed Projects:${NC}"
     echo "  - DNS Project: $DNS_INSTALL_DIR"
     echo "  - Tunnel Project: $TUNNEL_INSTALL_DIR"
-    echo "  - اسکریپت مدیریت DNS: /usr/local/bin/byosh"
-    echo "  - اسکریپت مدیریت Tunnel: /usr/local/bin/tunnel"
+    echo "  - DNS Management Script: /usr/local/bin/byosh"
+    echo "  - Tunnel Management Script: /usr/local/bin/tunnel"
     echo ""
-    echo -e "${BLUE}🌐 Server Type:${NC}"
+    echo -e "${BLUE}🌐 Server Configuration:${NC}"
+    echo "  - Server Type: $SERVER_TYPE"
     if [[ "$SERVER_TYPE" == "iran" ]]; then
-        echo "  - Iran Server (Client) - Connect to foreign server"
-        echo "  - Foreign server IP: $FOREIGN_IP"
-        echo "  - SSH port: $FOREIGN_PORT"
+        echo "  - Foreign IP: $FOREIGN_IP"
+        echo "  - SSH Port: $FOREIGN_PORT"
         echo "  - Username: $FOREIGN_USER"
+        echo "  - Local Port: $LOCAL_PORT"
+        echo "  - Tunnel Port: $TUNNEL_PORT"
     else
-        echo "  - Foreign Server (Server) - Receive connection from Iran server"
-        echo "  - SSH port: $FOREIGN_PORT"
-        echo "  - Tunnel port: $TUNNEL_PORT"
+        echo "  - SSH Port: $FOREIGN_PORT"
+        echo "  - Tunnel Port: $TUNNEL_PORT"
     fi
     echo ""
-    echo -e "${BLUE}🚀 دستورات آماده برای استفاده:${NC}"
+    echo -e "${BLUE}🚀 Ready to Use Commands:${NC}"
     echo ""
     echo -e "${YELLOW}DNS Commands:${NC}"
-    echo "  byosh list                # لیست پروفایل‌ها"
-    echo "  byosh start               # شروع DNS"
-    echo "  byosh status              # وضعیت DNS"
-    echo "  byosh logs                # نمایش لاگ‌ها"
+    echo "  byosh list                # List profiles"
+    echo "  byosh start               # Start DNS"
+    echo "  byosh status              # DNS status"
+    echo "  byosh logs                # Show logs"
     echo ""
     echo -e "${YELLOW}Tunnel Commands:${NC}"
-    echo "  tunnel start              # شروع تانل"
-    echo "  tunnel stop               # متوقف کردن تانل"
-    echo "  tunnel status             # وضعیت تانل"
-    echo "  tunnel monitor            # مانیتورینگ زنده"
-    echo "  tunnel optimize            # بهینه‌سازی"
+    echo "  tunnel start              # Start tunnel"
+    echo "  tunnel stop               # Stop tunnel"
+    echo "  tunnel status             # Tunnel status"
+    echo "  tunnel monitor            # Live monitoring"
+    echo "  tunnel optimize            # Optimization"
     echo ""
-    echo -e "${GREEN}🎉 همه چیز آماده است!${NC}"
-    echo -e "${BLUE}💡 می‌توانید فوراً از دستورات بالا استفاده کنید${NC}"
+    echo -e "${GREEN}🎉 Everything is ready!${NC}"
+    echo -e "${BLUE}💡 You can use the commands above immediately${NC}"
     echo ""
-    echo -e "${YELLOW}📝 نکته: برای تنظیمات پیشرفته، فایل‌های کانفیگ را ویرایش کنید${NC}"
+    echo -e "${YELLOW}📝 Note: For advanced settings, edit config files${NC}"
     echo "  - DNS: ~/.byosh/profiles/"
     echo "  - Tunnel: /etc/tunnel/config.conf"
 }
@@ -478,12 +450,18 @@ main() {
     
     # بررسی دسترسی root و تنظیم متغیرها
     if [[ $EUID -eq 0 ]]; then
-        warning_message "اجرای اسکریپت با دسترسی root - تنظیم متغیرها..."
+        warning_message "Running script with root privileges - setting variables..."
         USER="root"
         USER_HOME="/root"
         SUDO_CMD=""
     else
         SUDO_CMD="sudo"
+    fi
+    
+    # نمایش راهنما اگر درخواست شده
+    if [[ "$1" == "--help" || "$1" == "-h" ]]; then
+        show_help
+        exit 0
     fi
     
     # مراحل نصب
@@ -495,15 +473,15 @@ main() {
     create_management_scripts
     
     # تنظیم خودکار پروژه‌ها
-    info_message "شروع تنظیم خودکار پروژه‌ها..."
+    info_message "Starting automatic project setup..."
     
     # تنظیم خودکار DNS
     setup_dns_automatically
-    log_message "✅ DNS Project آماده است"
+    log_message "✅ DNS Project ready"
     
     # تنظیم خودکار Tunnel
     setup_tunnel_automatically
-    log_message "✅ Tunnel Project آماده است"
+    log_message "✅ Tunnel Project ready"
     
     cleanup
     
