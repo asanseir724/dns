@@ -42,7 +42,7 @@ show_banner() {
     echo -e "${PURPLE}"
     echo "╔══════════════════════════════════════════════════════════════╗"
     echo "║              سیستم مدیریت DNS و تانل خودکار                ║"
-    echo "║                    نصب کاملاً خودکار v3.0                 ║"
+    echo "║                    نصب خودکار v4.0                         ║"
     echo "╚══════════════════════════════════════════════════════════════╝"
     echo -e "${NC}"
 }
@@ -180,6 +180,80 @@ install_tunnel_project() {
     $SUDO_CMD chmod +x "$TUNNEL_INSTALL_DIR"/*.sh
     
     log_message "Tunnel Project installed"
+}
+
+# تابع تشخیص نوع سرور
+detect_server_type() {
+    echo -e "${BLUE}=== انتخاب نوع سرور ===${NC}"
+    echo "لطفاً نوع سرور خود را انتخاب کنید:"
+    echo "1) سرور ایران (کلاینت) - اتصال به سرور خارج"
+    echo "2) سرور خارج (سرور) - دریافت اتصال از سرور ایران"
+    echo ""
+    
+    while true; do
+        echo -n "نوع سرور شما (1 یا 2): "
+        read choice
+        case $choice in
+            1)
+                SERVER_TYPE="iran"
+                echo -e "${GREEN}✅ سرور ایران (کلاینت) انتخاب شد${NC}"
+                break
+                ;;
+            2)
+                SERVER_TYPE="foreign"
+                echo -e "${GREEN}✅ سرور خارج (سرور) انتخاب شد${NC}"
+                break
+                ;;
+            "")
+                echo -e "${YELLOW}⚠️  ورودی خالی است. لطفاً 1 یا 2 وارد کنید${NC}"
+                ;;
+            *)
+                echo -e "${RED}❌ لطفاً 1 یا 2 وارد کنید${NC}"
+                ;;
+        esac
+    done
+}
+
+# تابع دریافت اطلاعات سرور
+get_server_info() {
+    if [[ "$SERVER_TYPE" == "iran" ]]; then
+        echo -e "${BLUE}=== اطلاعات سرور خارج ===${NC}"
+        echo "لطفاً اطلاعات سرور خارج را وارد کنید:"
+        echo -e "${YELLOW}💡 مثال: IP = 1.2.3.4, پورت = 2222, نام کاربری = tunnel${NC}"
+        echo ""
+        
+        echo -n "IP سرور خارج: "
+        read FOREIGN_IP
+        
+        echo -n "پورت SSH سرور خارج [2222]: "
+        read FOREIGN_PORT
+        FOREIGN_PORT=${FOREIGN_PORT:-2222}
+        
+        echo -n "نام کاربری SSH [tunnel]: "
+        read FOREIGN_USER
+        FOREIGN_USER=${FOREIGN_USER:-tunnel}
+        
+        echo -n "پورت محلی تانل [8080]: "
+        read LOCAL_PORT
+        LOCAL_PORT=${LOCAL_PORT:-8080}
+        
+        echo -n "پورت تانل روی سرور خارج [1080]: "
+        read TUNNEL_PORT
+        TUNNEL_PORT=${TUNNEL_PORT:-1080}
+        
+        echo -e "${GREEN}✅ اطلاعات سرور خارج ذخیره شد${NC}"
+    else
+        echo -e "${BLUE}=== تنظیمات سرور خارج ===${NC}"
+        echo "تنظیمات پیش‌فرض برای سرور خارج:"
+        
+        FOREIGN_IP="0.0.0.0"
+        FOREIGN_PORT="2222"
+        FOREIGN_USER="tunnel"
+        LOCAL_PORT="8080"
+        TUNNEL_PORT="1080"
+        
+        echo -e "${GREEN}✅ تنظیمات پیش‌فرض سرور خارج اعمال شد${NC}"
+    fi
 }
 
 # تابع تنظیم خودکار DNS
@@ -400,48 +474,48 @@ cleanup() {
 
 # تابع نمایش خلاصه نصب
 show_install_summary() {
-    echo -e "${GREEN}=== Installation Completed Successfully ===${NC}"
+    echo -e "${GREEN}=== نصب با موفقیت تکمیل شد ===${NC}"
     echo ""
-    echo -e "${BLUE}✅ Installed Projects:${NC}"
+    echo -e "${BLUE}✅ پروژه‌های نصب شده:${NC}"
     echo "  - DNS Project: $DNS_INSTALL_DIR"
     echo "  - Tunnel Project: $TUNNEL_INSTALL_DIR"
-    echo "  - DNS Management Script: /usr/local/bin/byosh"
-    echo "  - Tunnel Management Script: /usr/local/bin/tunnel"
+    echo "  - اسکریپت مدیریت DNS: /usr/local/bin/byosh"
+    echo "  - اسکریپت مدیریت تانل: /usr/local/bin/tunnel"
     echo ""
-    echo -e "${BLUE}🌐 Server Configuration:${NC}"
-    echo "  - Server Type: $SERVER_TYPE"
+    echo -e "${BLUE}🌐 تنظیمات سرور:${NC}"
+    echo "  - نوع سرور: $SERVER_TYPE"
     if [[ "$SERVER_TYPE" == "iran" ]]; then
-        echo "  - Foreign IP: $FOREIGN_IP"
-        echo "  - SSH Port: $FOREIGN_PORT"
-        echo "  - Username: $FOREIGN_USER"
-        echo "  - Local Port: $LOCAL_PORT"
-        echo "  - Tunnel Port: $TUNNEL_PORT"
+        echo "  - IP خارج: $FOREIGN_IP"
+        echo "  - پورت SSH: $FOREIGN_PORT"
+        echo "  - نام کاربری: $FOREIGN_USER"
+        echo "  - پورت محلی: $LOCAL_PORT"
+        echo "  - پورت تانل: $TUNNEL_PORT"
     else
-        echo "  - SSH Port: $FOREIGN_PORT"
-        echo "  - Tunnel Port: $TUNNEL_PORT"
+        echo "  - پورت SSH: $FOREIGN_PORT"
+        echo "  - پورت تانل: $TUNNEL_PORT"
     fi
     echo ""
-    echo -e "${BLUE}🚀 Ready to Use Commands:${NC}"
+    echo -e "${BLUE}🚀 دستورات آماده استفاده:${NC}"
     echo ""
-    echo -e "${YELLOW}DNS Commands:${NC}"
-    echo "  byosh list                # List profiles"
-    echo "  byosh start               # Start DNS"
-    echo "  byosh status              # DNS status"
-    echo "  byosh logs                # Show logs"
+    echo -e "${YELLOW}دستورات DNS:${NC}"
+    echo "  byosh list                # لیست پروفایل‌ها"
+    echo "  byosh start               # شروع DNS"
+    echo "  byosh status              # وضعیت DNS"
+    echo "  byosh logs                # نمایش لاگ‌ها"
     echo ""
-    echo -e "${YELLOW}Tunnel Commands:${NC}"
-    echo "  tunnel start              # Start tunnel"
-    echo "  tunnel stop               # Stop tunnel"
-    echo "  tunnel status             # Tunnel status"
-    echo "  tunnel monitor            # Live monitoring"
-    echo "  tunnel optimize            # Optimization"
+    echo -e "${YELLOW}دستورات تانل:${NC}"
+    echo "  tunnel start              # شروع تانل"
+    echo "  tunnel stop               # توقف تانل"
+    echo "  tunnel status             # وضعیت تانل"
+    echo "  tunnel monitor            # مانیتورینگ زنده"
+    echo "  tunnel optimize            # بهینه‌سازی"
     echo ""
-    echo -e "${GREEN}🎉 Everything is ready!${NC}"
-    echo -e "${BLUE}💡 You can use the commands above immediately${NC}"
+    echo -e "${GREEN}🎉 همه چیز آماده است!${NC}"
+    echo -e "${BLUE}💡 می‌توانید فوراً از دستورات بالا استفاده کنید${NC}"
     echo ""
-    echo -e "${YELLOW}📝 Note: For advanced settings, edit config files${NC}"
+    echo -e "${YELLOW}📝 نکته: برای تنظیمات پیشرفته، فایل‌های کانفیگ را ویرایش کنید${NC}"
     echo "  - DNS: ~/.byosh/profiles/"
-    echo "  - Tunnel: /etc/tunnel/config.conf"
+    echo "  - تانل: /etc/tunnel/config.conf"
 }
 
 # تابع اصلی
@@ -462,6 +536,12 @@ main() {
     if [[ "$1" == "--help" || "$1" == "-h" ]]; then
         show_help
         exit 0
+    fi
+    
+    # سوال از کاربر اگر متغیرهای محیطی تنظیم نشده‌اند
+    if [[ -z "$SERVER_TYPE" ]]; then
+        detect_server_type
+        get_server_info
     fi
     
     # مراحل نصب
