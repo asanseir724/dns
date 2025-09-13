@@ -289,9 +289,53 @@ cleanup() {
     log_message "پاکسازی انجام شد"
 }
 
+# تابع نصب خودکار DNS
+auto_install_dns() {
+    info_message "نصب خودکار DNS Project..."
+    
+    if [[ -f "$DNS_INSTALL_DIR/install_byosh.sh" ]]; then
+        cd "$DNS_INSTALL_DIR"
+        chmod +x install_byosh.sh
+        
+        # اجرای نصب خودکار با پاسخ‌های پیش‌فرض
+        echo "y" | ./install_byosh.sh --auto || {
+            warning_message "نصب خودکار DNS ناموفق - نیاز به تنظیم دستی"
+            return 1
+        }
+        
+        log_message "DNS Project با موفقیت نصب شد"
+        return 0
+    else
+        warning_message "فایل install_byosh.sh یافت نشد"
+        return 1
+    fi
+}
+
+# تابع تنظیم خودکار Tunnel
+auto_setup_tunnel() {
+    info_message "تنظیم خودکار Tunnel Project..."
+    
+    if [[ -f "$TUNNEL_INSTALL_DIR/setup_tunnel.sh" ]]; then
+        cd "$TUNNEL_INSTALL_DIR"
+        chmod +x setup_tunnel.sh
+        
+        # اجرای تنظیم خودکار
+        echo "1" | ./setup_tunnel.sh --auto || {
+            warning_message "تنظیم خودکار Tunnel ناموفق - نیاز به تنظیم دستی"
+            return 1
+        }
+        
+        log_message "Tunnel Project با موفقیت تنظیم شد"
+        return 0
+    else
+        warning_message "فایل setup_tunnel.sh یافت نشد"
+        return 1
+    fi
+}
+
 # تابع نمایش خلاصه نصب
 show_install_summary() {
-    echo -e "${GREEN}=== نصب با موفقیت انجام شد ===${NC}"
+    echo -e "${GREEN}=== نصب کامل با موفقیت انجام شد ===${NC}"
     echo ""
     echo -e "${BLUE}فایل‌های نصب شده:${NC}"
     echo "  - DNS Project: $DNS_INSTALL_DIR"
@@ -300,26 +344,21 @@ show_install_summary() {
     echo "  - اسکریپت مدیریت Tunnel: /usr/local/bin/tunnel"
     echo ""
     echo -e "${BLUE}دستورات اصلی DNS:${NC}"
-    echo "  byosh install                    # نصب ByoSH"
     echo "  byosh manage list                # لیست پروفایل‌ها"
     echo "  byosh manage start profile_name  # شروع پروفایل"
     echo "  byosh manage status              # وضعیت کانتینرها"
+    echo "  byosh manage logs profile_name   # نمایش لاگ‌ها"
     echo ""
     echo -e "${BLUE}دستورات اصلی Tunnel:${NC}"
-    echo "  tunnel setup      # تنظیم اولیه"
     echo "  tunnel start      # شروع تانل"
+    echo "  tunnel stop       # متوقف کردن تانل"
     echo "  tunnel status     # وضعیت تانل"
     echo "  tunnel monitor    # مانیتورینگ زنده"
     echo "  tunnel optimize   # بهینه‌سازی"
     echo "  tunnel update     # به‌روزرسانی"
     echo ""
-    echo -e "${YELLOW}مراحل بعدی:${NC}"
-    echo "1. برای DNS: اجرای 'byosh install'"
-    echo "2. برای Tunnel: اجرای 'tunnel setup'"
-    echo "3. انتخاب نوع سرور و وارد کردن اطلاعات"
-    echo "4. شروع سرویس‌ها"
-    echo ""
-    echo -e "${GREEN}نصب کامل شد!${NC}"
+    echo -e "${GREEN}✅ همه چیز آماده است!${NC}"
+    echo -e "${YELLOW}💡 نکته: برای تنظیمات پیشرفته از دستورات بالا استفاده کنید${NC}"
 }
 
 # تابع اصلی
@@ -344,6 +383,24 @@ main() {
     install_dns_project
     install_tunnel_project
     create_management_scripts
+    
+    # نصب خودکار پروژه‌ها
+    info_message "شروع نصب خودکار پروژه‌ها..."
+    
+    # نصب خودکار DNS
+    if auto_install_dns; then
+        log_message "✅ DNS Project آماده است"
+    else
+        warning_message "⚠️ DNS Project نیاز به تنظیم دستی دارد"
+    fi
+    
+    # تنظیم خودکار Tunnel (فقط اگر اطلاعات سرور موجود باشد)
+    if auto_setup_tunnel; then
+        log_message "✅ Tunnel Project آماده است"
+    else
+        warning_message "⚠️ Tunnel Project نیاز به تنظیم دستی دارد"
+    fi
+    
     cleanup
     
     # نمایش خلاصه
