@@ -82,8 +82,8 @@ setup_iran_server() {
     TUNNEL_PORT=$(get_input "پورت تانل روی سرور خارج" "1080")
     
     # ایجاد فایل کانفیگ
-    sudo mkdir -p "$CONFIG_DIR"
-    sudo tee "$CONFIG_FILE" > /dev/null << EOF
+    $SUDO_CMD mkdir -p "$CONFIG_DIR"
+    $SUDO_CMD tee "$CONFIG_FILE" > /dev/null << EOF
 # تنظیمات تانل کلاینت (سرور ایران)
 SERVER_TYPE="iran"
 REMOTE_SERVER="$REMOTE_SERVER"
@@ -96,11 +96,11 @@ EOF
     log_message "فایل کانفیگ ایجاد شد: $CONFIG_FILE"
     
     # کپی اسکریپت کلاینت
-    sudo cp tunnel_client.sh /usr/local/bin/tunnel_client.sh
-    sudo chmod +x /usr/local/bin/tunnel_client.sh
+    $SUDO_CMD cp tunnel_client.sh /usr/local/bin/tunnel_client.sh
+    $SUDO_CMD chmod +x /usr/local/bin/tunnel_client.sh
     
     # ایجاد لینک نمادین
-    sudo ln -sf /usr/local/bin/tunnel_client.sh /usr/local/bin/tunnel
+    $SUDO_CMD ln -sf /usr/local/bin/tunnel_client.sh /usr/local/bin/tunnel
     
     log_message "اسکریپت کلاینت نصب شد"
 }
@@ -115,8 +115,8 @@ setup_foreign_server() {
     TUNNEL_PORT=$(get_input "پورت تانل" "1080")
     
     # ایجاد فایل کانفیگ
-    sudo mkdir -p "$CONFIG_DIR"
-    sudo tee "$CONFIG_FILE" > /dev/null << EOF
+    $SUDO_CMD mkdir -p "$CONFIG_DIR"
+    $SUDO_CMD tee "$CONFIG_FILE" > /dev/null << EOF
 # تنظیمات تانل سرور (سرور خارج)
 SERVER_TYPE="foreign"
 SSH_PORT="$SSH_PORT"
@@ -126,11 +126,11 @@ EOF
     log_message "فایل کانفیگ ایجاد شد: $CONFIG_FILE"
     
     # کپی اسکریپت سرور
-    sudo cp tunnel_server.sh /usr/local/bin/tunnel_server.sh
-    sudo chmod +x /usr/local/bin/tunnel_server.sh
+    $SUDO_CMD cp tunnel_server.sh /usr/local/bin/tunnel_server.sh
+    $SUDO_CMD chmod +x /usr/local/bin/tunnel_server.sh
     
     # ایجاد لینک نمادین
-    sudo ln -sf /usr/local/bin/tunnel_server.sh /usr/local/bin/tunnel
+    $SUDO_CMD ln -sf /usr/local/bin/tunnel_server.sh /usr/local/bin/tunnel
     
     log_message "اسکریپت سرور نصب شد"
 }
@@ -145,7 +145,7 @@ create_systemd_service() {
         SERVICE_NAME="iran-tunnel"
         SERVICE_FILE="/etc/systemd/system/$SERVICE_NAME.service"
         
-        sudo tee "$SERVICE_FILE" > /dev/null << EOF
+        $SUDO_CMD tee "$SERVICE_FILE" > /dev/null << EOF
 [Unit]
 Description=Iran Tunnel Client
 After=network.target
@@ -166,7 +166,7 @@ EOF
         SERVICE_NAME="foreign-tunnel"
         SERVICE_FILE="/etc/systemd/system/$SERVICE_NAME.service"
         
-        sudo tee "$SERVICE_FILE" > /dev/null << EOF
+        $SUDO_CMD tee "$SERVICE_FILE" > /dev/null << EOF
 [Unit]
 Description=Foreign Tunnel Server
 After=network.target
@@ -184,8 +184,8 @@ WantedBy=multi-user.target
 EOF
     fi
     
-    sudo systemctl daemon-reload
-    sudo systemctl enable "$SERVICE_NAME"
+    $SUDO_CMD systemctl daemon-reload
+    $SUDO_CMD systemctl enable "$SERVICE_NAME"
     
     log_message "سرویس systemd ایجاد شد: $SERVICE_NAME"
 }
@@ -232,10 +232,14 @@ main() {
     echo "این اسکریپت برای تنظیم اولیه تانل بین سرور ایران و خارج طراحی شده است"
     echo ""
     
-    # بررسی دسترسی root
+    # بررسی دسترسی root و تنظیم متغیرها
     if [[ $EUID -eq 0 ]]; then
-        error_message "این اسکریپت نباید با دسترسی root اجرا شود"
-        exit 1
+        warning_message "اجرای اسکریپت با دسترسی root - تنظیم متغیرها..."
+        USER="root"
+        USER_HOME="/root"
+        SUDO_CMD=""
+    else
+        SUDO_CMD="$SUDO_CMD"
     fi
     
     # بررسی وجود فایل‌های اسکریپت
