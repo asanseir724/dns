@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # اسکریپت نصب خودکار از گیت‌هاب
-# این اسکریپت پروژه تانل را از گیت‌هاب دانلود و نصب می‌کند
+# این اسکریپت پروژه‌های DNS و Tunnel را از گیت‌هاب دانلود و نصب می‌کند
 
 set -e
 
@@ -14,9 +14,10 @@ PURPLE='\033[0;35m'
 NC='\033[0m' # No Color
 
 # تنظیمات پیش‌فرض
-REPO_URL="https://github.com/USERNAME/tunnel-project.git"
-INSTALL_DIR="/opt/tunnel"
-TEMP_DIR="/tmp/tunnel-install"
+REPO_URL="https://github.com/asanseir724/dns.git"
+DNS_INSTALL_DIR="/opt/dns"
+TUNNEL_INSTALL_DIR="/opt/tunnel"
+TEMP_DIR="/tmp/dns-install"
 
 # تابع نمایش پیام
 log_message() {
@@ -40,8 +41,8 @@ info_message() {
 show_banner() {
     echo -e "${PURPLE}"
     echo "╔══════════════════════════════════════════════════════════════╗"
-    echo "║                    سیستم تانل خودکار                        ║"
-    echo "║              نصب خودکار از گیت‌هاب                         ║"
+    echo "║              سیستم مدیریت DNS و تانل خودکار                ║"
+    echo "║                    نصب خودکار از گیت‌هاب                     ║"
     echo "╚══════════════════════════════════════════════════════════════╝"
     echo -e "${NC}"
 }
@@ -54,11 +55,11 @@ check_dependencies() {
     if ! command -v git &> /dev/null; then
         warning_message "git نصب نیست - در حال نصب..."
         if command -v apt-get &> /dev/null; then
-            sudo apt-get update && sudo apt-get install -y git
+            $SUDO_CMD apt-get update && $SUDO_CMD apt-get install -y git
         elif command -v yum &> /dev/null; then
-            sudo yum update -y && sudo yum install -y git
+            $SUDO_CMD yum update -y && $SUDO_CMD yum install -y git
         elif command -v dnf &> /dev/null; then
-            sudo dnf update -y && sudo dnf install -y git
+            $SUDO_CMD dnf update -y && $SUDO_CMD dnf install -y git
         else
             error_message "نمی‌توان git را نصب کرد"
         fi
@@ -68,11 +69,11 @@ check_dependencies() {
     if ! command -v curl &> /dev/null; then
         warning_message "curl نصب نیست - در حال نصب..."
         if command -v apt-get &> /dev/null; then
-            sudo apt-get install -y curl
+            $SUDO_CMD apt-get install -y curl
         elif command -v yum &> /dev/null; then
-            sudo yum install -y curl
+            $SUDO_CMD yum install -y curl
         elif command -v dnf &> /dev/null; then
-            sudo dnf install -y curl
+            $SUDO_CMD dnf install -y curl
         fi
     fi
     
@@ -95,29 +96,62 @@ download_project() {
     fi
 }
 
-# تابع نصب پروژه
-install_project() {
-    info_message "نصب پروژه..."
+# تابع نصب DNS Project
+install_dns_project() {
+    info_message "نصب DNS Project..."
     
     # ایجاد دایرکتوری نصب
-    sudo mkdir -p "$INSTALL_DIR"
+    $SUDO_CMD mkdir -p "$DNS_INSTALL_DIR"
     
-    # کپی فایل‌ها
-    sudo cp -r "$TEMP_DIR"/* "$INSTALL_DIR/"
+    # کپی فایل‌های dns-project
+    if [[ -d "$TEMP_DIR/dns-project" ]]; then
+        $SUDO_CMD cp -r "$TEMP_DIR/dns-project"/* "$DNS_INSTALL_DIR/"
+        log_message "فایل‌های dns-project کپی شدند"
+    else
+        warning_message "پوشه dns-project یافت نشد - رد شدن..."
+        return
+    fi
     
     # تنظیم مجوزها
-    sudo chown -R "$USER:$USER" "$INSTALL_DIR"
-    sudo chmod +x "$INSTALL_DIR"/*.sh
+    $SUDO_CMD chown -R "$USER:$USER" "$DNS_INSTALL_DIR"
+    $SUDO_CMD chmod +x "$DNS_INSTALL_DIR"/*.sh
     
     # ایجاد لینک‌های نمادین
-    sudo ln -sf "$INSTALL_DIR/install_tunnel.sh" /usr/local/bin/tunnel-install
-    sudo ln -sf "$INSTALL_DIR/setup_tunnel.sh" /usr/local/bin/tunnel-setup
-    sudo ln -sf "$INSTALL_DIR/tunnel_client.sh" /usr/local/bin/tunnel-client
-    sudo ln -sf "$INSTALL_DIR/tunnel_server.sh" /usr/local/bin/tunnel-server
-    sudo ln -sf "$INSTALL_DIR/tunnel_manager.sh" /usr/local/bin/tunnel-manager
-    sudo ln -sf "$INSTALL_DIR/optimize_tunnel.sh" /usr/local/bin/tunnel-optimize
+    $SUDO_CMD ln -sf "$DNS_INSTALL_DIR/install_byosh.sh" /usr/local/bin/byosh-install
+    $SUDO_CMD ln -sf "$DNS_INSTALL_DIR/manage_byosh.sh" /usr/local/bin/byosh-manage
     
-    log_message "پروژه نصب شد"
+    log_message "DNS Project نصب شد"
+}
+
+# تابع نصب Tunnel Project
+install_tunnel_project() {
+    info_message "نصب Tunnel Project..."
+    
+    # ایجاد دایرکتوری نصب
+    $SUDO_CMD mkdir -p "$TUNNEL_INSTALL_DIR"
+    
+    # کپی فایل‌های tunnel-project
+    if [[ -d "$TEMP_DIR/tunnel-project" ]]; then
+        $SUDO_CMD cp -r "$TEMP_DIR/tunnel-project"/* "$TUNNEL_INSTALL_DIR/"
+        log_message "فایل‌های tunnel-project کپی شدند"
+    else
+        warning_message "پوشه tunnel-project یافت نشد - رد شدن..."
+        return
+    fi
+    
+    # تنظیم مجوزها
+    $SUDO_CMD chown -R "$USER:$USER" "$TUNNEL_INSTALL_DIR"
+    $SUDO_CMD chmod +x "$TUNNEL_INSTALL_DIR"/*.sh
+    
+    # ایجاد لینک‌های نمادین
+    $SUDO_CMD ln -sf "$TUNNEL_INSTALL_DIR/install_tunnel.sh" /usr/local/bin/tunnel-install
+    $SUDO_CMD ln -sf "$TUNNEL_INSTALL_DIR/setup_tunnel.sh" /usr/local/bin/tunnel-setup
+    $SUDO_CMD ln -sf "$TUNNEL_INSTALL_DIR/tunnel_client.sh" /usr/local/bin/tunnel-client
+    $SUDO_CMD ln -sf "$TUNNEL_INSTALL_DIR/tunnel_server.sh" /usr/local/bin/tunnel-server
+    $SUDO_CMD ln -sf "$TUNNEL_INSTALL_DIR/tunnel_manager.sh" /usr/local/bin/tunnel-manager
+    $SUDO_CMD ln -sf "$TUNNEL_INSTALL_DIR/optimize_tunnel.sh" /usr/local/bin/tunnel-optimize
+    
+    log_message "Tunnel Project نصب شد"
 }
 
 # تابع نصب وابستگی‌های سیستم
@@ -125,24 +159,54 @@ install_system_dependencies() {
     info_message "نصب وابستگی‌های سیستم..."
     
     if command -v apt-get &> /dev/null; then
-        sudo apt-get update
-        sudo apt-get install -y openssh-client openssh-server autossh ufw netcat-openbsd bc
+        $SUDO_CMD apt-get update
+        $SUDO_CMD apt-get install -y openssh-client openssh-server autossh ufw netcat-openbsd bc docker.io
     elif command -v yum &> /dev/null; then
-        sudo yum update -y
-        sudo yum install -y openssh-clients openssh-server autossh firewalld nc bc
+        $SUDO_CMD yum update -y
+        $SUDO_CMD yum install -y openssh-clients openssh-server autossh firewalld nc bc docker
     elif command -v dnf &> /dev/null; then
-        sudo dnf update -y
-        sudo dnf install -y openssh-clients openssh-server autossh firewalld nc bc
+        $SUDO_CMD dnf update -y
+        $SUDO_CMD dnf install -y openssh-clients openssh-server autossh firewalld nc bc docker
     fi
     
     log_message "وابستگی‌های سیستم نصب شدند"
 }
 
-# تابع ایجاد اسکریپت مدیریت
-create_management_script() {
-    info_message "ایجاد اسکریپت مدیریت..."
+# تابع ایجاد اسکریپت‌های مدیریت
+create_management_scripts() {
+    info_message "ایجاد اسکریپت‌های مدیریت..."
     
-    sudo tee /usr/local/bin/tunnel > /dev/null << 'EOF'
+    # اسکریپت مدیریت DNS
+    $SUDO_CMD tee /usr/local/bin/byosh > /dev/null << 'EOF'
+#!/bin/bash
+
+# اسکریپت مدیریت DNS ByoSH
+# این اسکریپت برای مدیریت آسان DNS طراحی شده است
+
+case "${1:-help}" in
+    "install")
+        echo "نصب ByoSH..."
+        /usr/local/bin/byosh-install
+        ;;
+    "manage")
+        echo "مدیریت پروفایل‌ها..."
+        /usr/local/bin/byosh-manage "${@:2}"
+        ;;
+    "help"|*)
+        echo "راهنمای استفاده از ByoSH:"
+        echo "  byosh install                    # نصب ByoSH"
+        echo "  byosh manage list                # لیست پروفایل‌ها"
+        echo "  byosh manage start profile_name  # شروع پروفایل"
+        echo "  byosh manage stop profile_name   # متوقف کردن پروفایل"
+        echo "  byosh manage status              # وضعیت کانتینرها"
+        echo "  byosh manage logs profile_name   # نمایش لاگ‌ها"
+        echo "  byosh manage clean                # پاکسازی"
+        ;;
+esac
+EOF
+
+    # اسکریپت مدیریت Tunnel
+    $SUDO_CMD tee /usr/local/bin/tunnel > /dev/null << 'EOF'
 #!/bin/bash
 
 # اسکریپت مدیریت تانل
@@ -195,7 +259,7 @@ case "${1:-help}" in
         ;;
     "update")
         echo "به‌روزرسانی پروژه..."
-        curl -sSL https://raw.githubusercontent.com/USERNAME/tunnel-project/main/install.sh | bash
+        curl -sSL https://raw.githubusercontent.com/asanseir724/dns/main/install.sh | bash
         ;;
     "help"|*)
         echo "راهنمای استفاده از تانل:"
@@ -212,9 +276,10 @@ case "${1:-help}" in
 esac
 EOF
     
-    sudo chmod +x /usr/local/bin/tunnel
+    $SUDO_CMD chmod +x /usr/local/bin/byosh
+    $SUDO_CMD chmod +x /usr/local/bin/tunnel
     
-    log_message "اسکریپت مدیریت ایجاد شد"
+    log_message "اسکریپت‌های مدیریت ایجاد شدند"
 }
 
 # تابع پاکسازی
@@ -229,10 +294,18 @@ show_install_summary() {
     echo -e "${GREEN}=== نصب با موفقیت انجام شد ===${NC}"
     echo ""
     echo -e "${BLUE}فایل‌های نصب شده:${NC}"
-    echo "  - دایرکتوری نصب: $INSTALL_DIR"
-    echo "  - اسکریپت مدیریت: /usr/local/bin/tunnel"
+    echo "  - DNS Project: $DNS_INSTALL_DIR"
+    echo "  - Tunnel Project: $TUNNEL_INSTALL_DIR"
+    echo "  - اسکریپت مدیریت DNS: /usr/local/bin/byosh"
+    echo "  - اسکریپت مدیریت Tunnel: /usr/local/bin/tunnel"
     echo ""
-    echo -e "${BLUE}دستورات اصلی:${NC}"
+    echo -e "${BLUE}دستورات اصلی DNS:${NC}"
+    echo "  byosh install                    # نصب ByoSH"
+    echo "  byosh manage list                # لیست پروفایل‌ها"
+    echo "  byosh manage start profile_name  # شروع پروفایل"
+    echo "  byosh manage status              # وضعیت کانتینرها"
+    echo ""
+    echo -e "${BLUE}دستورات اصلی Tunnel:${NC}"
     echo "  tunnel setup      # تنظیم اولیه"
     echo "  tunnel start      # شروع تانل"
     echo "  tunnel status     # وضعیت تانل"
@@ -241,10 +314,10 @@ show_install_summary() {
     echo "  tunnel update     # به‌روزرسانی"
     echo ""
     echo -e "${YELLOW}مراحل بعدی:${NC}"
-    echo "1. اجرای 'tunnel setup' برای تنظیم اولیه"
-    echo "2. انتخاب نوع سرور (ایران یا خارج)"
-    echo "3. وارد کردن اطلاعات سرور"
-    echo "4. شروع تانل با 'tunnel start'"
+    echo "1. برای DNS: اجرای 'byosh install'"
+    echo "2. برای Tunnel: اجرای 'tunnel setup'"
+    echo "3. انتخاب نوع سرور و وارد کردن اطلاعات"
+    echo "4. شروع سرویس‌ها"
     echo ""
     echo -e "${GREEN}نصب کامل شد!${NC}"
 }
@@ -253,17 +326,24 @@ show_install_summary() {
 main() {
     show_banner
     
-    # بررسی دسترسی root
+    # بررسی دسترسی root و تنظیم متغیرها
     if [[ $EUID -eq 0 ]]; then
-        error_message "این اسکریپت نباید با دسترسی root اجرا شود"
+        warning_message "اجرای اسکریپت با دسترسی root - تنظیم متغیرها..."
+        # تنظیم متغیرها برای اجرای root
+        USER="root"
+        USER_HOME="/root"
+        SUDO_CMD=""
+    else
+        SUDO_CMD="sudo"
     fi
     
     # مراحل نصب
     check_dependencies
     download_project
     install_system_dependencies
-    install_project
-    create_management_script
+    install_dns_project
+    install_tunnel_project
+    create_management_scripts
     cleanup
     
     # نمایش خلاصه
