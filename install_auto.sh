@@ -184,25 +184,93 @@ EOF
     log_message "پروفایل پیش‌فرض DNS ایجاد شد"
 }
 
+# تابع تشخیص نوع سرور
+detect_server_type() {
+    echo -e "${BLUE}=== تشخیص نوع سرور ===${NC}"
+    echo "لطفاً نوع سرور خود را انتخاب کنید:"
+    echo "1) سرور ایران (کلاینت) - برای اتصال به سرور خارج"
+    echo "2) سرور خارج (سرور) - برای دریافت اتصال از سرور ایران"
+    echo ""
+    
+    while true; do
+        read -p "نوع سرور شما (1 یا 2): " choice
+        case $choice in
+            1)
+                SERVER_TYPE="iran"
+                echo -e "${GREEN}✅ سرور ایران (کلاینت) انتخاب شد${NC}"
+                break
+                ;;
+            2)
+                SERVER_TYPE="foreign"
+                echo -e "${GREEN}✅ سرور خارج (سرور) انتخاب شد${NC}"
+                break
+                ;;
+            *)
+                echo -e "${RED}❌ لطفاً 1 یا 2 را وارد کنید${NC}"
+                ;;
+        esac
+    done
+}
+
+# تابع دریافت اطلاعات سرور
+get_server_info() {
+    if [[ "$SERVER_TYPE" == "iran" ]]; then
+        echo -e "${BLUE}=== اطلاعات سرور خارج ===${NC}"
+        echo "لطفاً اطلاعات سرور خارج را وارد کنید:"
+        
+        read -p "آدرس IP سرور خارج: " FOREIGN_IP
+        read -p "پورت SSH سرور خارج [2222]: " FOREIGN_PORT
+        FOREIGN_PORT=${FOREIGN_PORT:-2222}
+        
+        read -p "نام کاربری سرور خارج [tunnel]: " FOREIGN_USER
+        FOREIGN_USER=${FOREIGN_USER:-tunnel}
+        
+        read -p "پورت محلی برای تانل [8080]: " LOCAL_PORT
+        LOCAL_PORT=${LOCAL_PORT:-8080}
+        
+        read -p "پورت تانل روی سرور خارج [1080]: " TUNNEL_PORT
+        TUNNEL_PORT=${TUNNEL_PORT:-1080}
+        
+        echo -e "${GREEN}✅ اطلاعات سرور خارج ثبت شد${NC}"
+    else
+        echo -e "${BLUE}=== تنظیمات سرور خارج ===${NC}"
+        echo "تنظیمات پیش‌فرض برای سرور خارج:"
+        
+        FOREIGN_IP="0.0.0.0"
+        FOREIGN_PORT="2222"
+        FOREIGN_USER="tunnel"
+        LOCAL_PORT="8080"
+        TUNNEL_PORT="1080"
+        
+        echo -e "${GREEN}✅ تنظیمات پیش‌فرض سرور خارج اعمال شد${NC}"
+    fi
+}
+
 # تابع تنظیم خودکار Tunnel
 setup_tunnel_automatically() {
     info_message "تنظیم خودکار Tunnel Project..."
     
+    # تشخیص نوع سرور
+    detect_server_type
+    
+    # دریافت اطلاعات سرور
+    get_server_info
+    
     # ایجاد پوشه تنظیمات
     $SUDO_CMD mkdir -p /etc/tunnel
     
-    # ایجاد فایل کانفیگ پیش‌فرض
-    $SUDO_CMD tee /etc/tunnel/config.conf > /dev/null << 'EOF'
-# تنظیمات تانل پیش‌فرض
-SERVER_TYPE="iran"
-FOREIGN_IP="127.0.0.1"
-FOREIGN_PORT="2222"
-FOREIGN_USER="tunnel"
-LOCAL_PORT="8080"
-TUNNEL_PORT="1080"
+    # ایجاد فایل کانفیگ
+    $SUDO_CMD tee /etc/tunnel/config.conf > /dev/null << EOF
+# تنظیمات تانل - $(date)
+SERVER_TYPE="$SERVER_TYPE"
+FOREIGN_IP="$FOREIGN_IP"
+FOREIGN_PORT="$FOREIGN_PORT"
+FOREIGN_USER="$FOREIGN_USER"
+LOCAL_PORT="$LOCAL_PORT"
+TUNNEL_PORT="$TUNNEL_PORT"
 EOF
 
-    log_message "تنظیمات پیش‌فرض Tunnel ایجاد شد"
+    log_message "تنظیمات Tunnel برای سرور $SERVER_TYPE ایجاد شد"
 }
 
 # تابع ایجاد اسکریپت‌های مدیریت
@@ -363,6 +431,18 @@ show_install_summary() {
     echo "  - Tunnel Project: $TUNNEL_INSTALL_DIR"
     echo "  - اسکریپت مدیریت DNS: /usr/local/bin/byosh"
     echo "  - اسکریپت مدیریت Tunnel: /usr/local/bin/tunnel"
+    echo ""
+    echo -e "${BLUE}🌐 نوع سرور:${NC}"
+    if [[ "$SERVER_TYPE" == "iran" ]]; then
+        echo "  - سرور ایران (کلاینت) - اتصال به سرور خارج"
+        echo "  - IP سرور خارج: $FOREIGN_IP"
+        echo "  - پورت SSH: $FOREIGN_PORT"
+        echo "  - نام کاربری: $FOREIGN_USER"
+    else
+        echo "  - سرور خارج (سرور) - دریافت اتصال از سرور ایران"
+        echo "  - پورت SSH: $FOREIGN_PORT"
+        echo "  - پورت تانل: $TUNNEL_PORT"
+    fi
     echo ""
     echo -e "${BLUE}🚀 دستورات آماده برای استفاده:${NC}"
     echo ""
